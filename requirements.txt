@@ -1,0 +1,9 @@
+streamlit>=1.36
+pandas
+numpy
+scikit-learn
+catboost
+plotly
+matplotlib
+shap
+joblib
