@@ -1,8 +1,9 @@
+# main.py
 import streamlit as st
 import pandas as pd
 import numpy as np
-from pathlib import Path
 import plotly.express as px
+from utils.model_utils import load_data  # <— tekil veri yükleyici
 
 # --------------------
 # SAYFA AYARLARI
@@ -15,23 +16,26 @@ st.set_page_config(
 )
 
 # --------------------
+# CACHE'Lİ VERİ YÜKLEME
+# --------------------
+@st.cache_data(show_spinner=False)
+def _load_df():
+    # load_data(return_path=True) destekliyse yolu da al, değilse geriye dönük çalış
+    try:
+        df, used = load_data(return_path=True)
+    except TypeError:
+        df, used = load_data(), None
+    return df, used
+
+df, used_path = _load_df()
+
+# --------------------
 # YARDIMCI FONKSİYONLAR
 # --------------------
-DATA_PATH = Path("data/NIJ_s_Recidivism_Full_Dataset.csv")
-
-@st.cache_data(show_spinner=False)
-def load_df():
-    if DATA_PATH.exists():
-        try:
-            return pd.read_csv(DATA_PATH)
-        except Exception as e:
-            st.error(f"Veri okunamadı: {e}")
-    return None
-
-def safe_mean(s):
+def safe_mean(s: pd.Series):
     return pd.to_numeric(s, errors="coerce").dropna().mean()
 
-def safe_unique(s):
+def safe_unique(s: pd.Series | None):
     return int(s.nunique()) if s is not None else 0
 
 def render_card(col, value, label, emoji, color="#0d47a1"):
@@ -86,115 +90,122 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Veri kaynağı yolu (varsa) göster
+if used_path:
+    st.caption(f"Kaynak: {used_path}")
+
 st.divider()
 
 # --------------------
-# VERİYİ YÜKLE
+# VERİ KONTROLÜ
 # --------------------
-df = load_df()
-if df is None:
-    st.warning("Veri bulunamadı. Lütfen dosyayı şu yola koyun: `data/NIJ_s_Recidivism_Full_Dataset.csv`")
-else:
-    # --------------------
-    # KPI ve BİLGİ KARTLARI
-    # --------------------
-    # 3. sütunu geniş tutarak 'Hedef' metninin tam görünmesini sağlıyoruz
-    k1, k2, k3 = st.columns([1, 1, 2.6])
+if df is None or df.empty:
+    st.error(
+        "Veri yüklenemedi. Lütfen veriyi repo içindeki `data/` klasörüne koyun "
+        "(örn. `data/NIJ_s_Recidivism_Full_Dataset.csv`) veya secrets/ENV ile `DATA_PATH` tanımlayın."
+    )
+    st.stop()
 
-    with k1:
-        st.metric("Kayıt Sayısı", f"{df.shape[0]:,}")
+# --------------------
+# KPI ve BİLGİ KARTLARI
+# --------------------
+# 'Hedef' metninin tam görünmesi için geniş 3. sütun
+k1, k2, k3 = st.columns([1, 1, 2.6])
 
-    with k2:
-        st.metric("Özellik Sayısı", f"{df.shape[1]}")
+with k1:
+    st.metric("Kayıt Sayısı", f"{df.shape[0]:,}")
 
-    # 'Hedef'i metric yerine özel bir çip ile solda ve tam metin göster
-    with k3:
-        st.markdown(
-            """
-            <div style="
-                border: 1px solid #e5e7eb; border-radius: 12px; padding: .8rem 1rem;
-                background: #f9fafb; box-shadow: 0 2px 8px rgba(0,0,0,.05);
-            ">
-              <div style="font-size:.95rem; color:#6b7280; margin-bottom:.2rem;">Hedef</div>
-              <div style="font-size:1.1rem; font-weight:700; color:#111827; text-align:left;">
-                3 yıl içinde yeniden suç işleme (0/1)
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True
+with k2:
+    st.metric("Özellik Sayısı", f"{df.shape[1]}")
+
+with k3:
+    st.markdown(
+        """
+        <div style="
+            border: 1px solid #e5e7eb; border-radius: 12px; padding: .8rem 1rem;
+            background: #f9fafb; box-shadow: 0 2px 8px rgba(0,0,0,.05);
+        ">
+          <div style="font-size:.95rem; color:#6b7280; margin-bottom:.2rem;">Hedef</div>
+          <div style="font-size:1.1rem; font-weight:700; color:#111827; text-align:left;">
+            3 yıl içinde yeniden suç işleme (0/1)
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+st.markdown("")
+
+# Bilgi kartları (grid)
+cards = []
+cards.append(("Sütun Sayısı", df.shape[1], "📋", "#1976d2"))
+
+if "Prison_Offense" in df.columns:
+    n_offense = safe_unique(df["Prison_Offense"])
+    if n_offense > 0:
+        cards.append(("Farklı Suç Tipi", n_offense, "📌", "#0288d1"))
+
+if "Sentence_Length_Months" in df.columns:
+    avg_sentence = safe_mean(df["Sentence_Length_Months"])
+    if pd.notna(avg_sentence):
+        cards.append(("Ortalama Ceza Süresi (Ay)", f"{avg_sentence:.1f}", "⏳", "#388e3c"))
+
+recid_col = next((c for c in df.columns if "recid" in c.lower()), None)
+if recid_col:
+    recid_rate = safe_mean(pd.to_numeric(df[recid_col], errors="coerce"))
+    if pd.notna(recid_rate):
+        cards.append(("Yeniden Suç İşleme Oranı", f"%{recid_rate*100:.1f}", "⚠️", "#d32f2f"))
+
+if "Age_at_Release" in df.columns:
+    avg_age = safe_mean(df["Age_at_Release"])
+    if pd.notna(avg_age):
+        cards.append(("Ortalama Tahliye Yaşı", f"{avg_age:.1f}", "👤", "#00695c"))
+
+if "Education_Level" in df.columns:
+    n_edu = safe_unique(df["Education_Level"])
+    if n_edu > 0:
+        cards.append(("Eğitim Seviyesi Sayısı", n_edu, "🎓", "#6a1b9a"))
+
+if "Gender" in df.columns:
+    n_gender = safe_unique(df["Gender"])
+    if n_gender > 0:
+        cards.append(("Cinsiyet Sayısı", n_gender, "🚻", "#5d4037"))
+
+if cards:
+    rows = (len(cards) + 3) // 4
+    for r in range(rows):
+        cols = st.columns(4, gap="small")
+        for i in range(4):
+            idx = r * 4 + i
+            if idx >= len(cards):
+                break
+            label, val, emoji, color = cards[idx]
+            render_card(cols[i], val, label, emoji, color)
+
+st.divider()
+
+# --------------------
+# PASTA GRAFİĞİ – Recidivism oranı
+# --------------------
+st.subheader("🎯 Yeniden Suç İşleme Oranı (Pasta Grafiği)")
+c1, c2 = st.columns([3, 1])
+with c1:
+    if recid_col and recid_col in df.columns:
+        counts = pd.to_numeric(df[recid_col], errors="coerce").dropna().astype(int).value_counts().sort_index()
+        labels = ["Tekrar Suç İşlemedi", "Tekrar Suç İşledi"]
+        values = [int(counts.get(0, 0)), int(counts.get(1, 0))]
+        fig = px.pie(
+            names=labels, values=values,
+            title="3 Yıl İçinde Yeniden Suç İşleme Oranı",
+            color_discrete_sequence=px.colors.sequential.RdBu
         )
-
-    st.markdown("")
-
-    # Bilgi kartları (grid)
-    cards = []
-    cards.append(("Sütun Sayısı", df.shape[1], "📋", "#1976d2"))
-
-    if "Prison_Offense" in df.columns:
-        n_offense = safe_unique(df["Prison_Offense"])
-        if n_offense > 0:
-            cards.append(("Farklı Suç Tipi", n_offense, "📌", "#0288d1"))
-
-    if "Sentence_Length_Months" in df.columns:
-        avg_sentence = safe_mean(df["Sentence_Length_Months"])
-        if pd.notna(avg_sentence):
-            cards.append(("Ortalama Ceza Süresi (Ay)", f"{avg_sentence:.1f}", "⏳", "#388e3c"))
-
-    recid_col = next((c for c in df.columns if "recid" in c.lower()), None)
-    if recid_col:
-        recid_rate = safe_mean(pd.to_numeric(df[recid_col], errors="coerce"))
-        if pd.notna(recid_rate):
-            cards.append(("Yeniden Suç İşleme Oranı", f"%{recid_rate*100:.1f}", "⚠️", "#d32f2f"))
-
-    if "Age_at_Release" in df.columns:
-        avg_age = safe_mean(df["Age_at_Release"])
-        if pd.notna(avg_age):
-            cards.append(("Ortalama Tahliye Yaşı", f"{avg_age:.1f}", "👤", "#00695c"))
-
-    if "Education_Level" in df.columns:
-        n_edu = safe_unique(df["Education_Level"])
-        if n_edu > 0:
-            cards.append(("Eğitim Seviyesi Sayısı", n_edu, "🎓", "#6a1b9a"))
-
-    if "Gender" in df.columns:
-        n_gender = safe_unique(df["Gender"])
-        if n_gender > 0:
-            cards.append(("Cinsiyet Sayısı", n_gender, "🚻", "#5d4037"))
-
-    if cards:
-        rows = (len(cards) + 3) // 4
-        for r in range(rows):
-            cols = st.columns(4, gap="small")
-            for i in range(4):
-                idx = r * 4 + i
-                if idx >= len(cards):
-                    break
-                label, val, emoji, color = cards[idx]
-                render_card(cols[i], val, label, emoji, color)
-
-    st.divider()
-
-    # --------------------
-    # PASTA GRAFİĞİ – Recidivism oranı
-    # --------------------
-    st.subheader("🎯 Yeniden Suç İşleme Oranı (Pasta Grafiği)")
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        if recid_col and recid_col in df.columns:
-            counts = pd.to_numeric(df[recid_col], errors="coerce").dropna().astype(int).value_counts().sort_index()
-            labels = ["Tekrar Suç İşlemedi", "Tekrar Suç İşledi"]
-            values = [int(counts.get(0, 0)), int(counts.get(1, 0))]
-            fig = px.pie(
-                names=labels, values=values,
-                title="3 Yıl İçinde Yeniden Suç İşleme Oranı",
-                color_discrete_sequence=px.colors.sequential.RdBu
-            )
-            fig.update_traces(textposition="inside", textinfo="percent+label", pull=[0, 0.1])
-            fig.update_layout(title_x=0.5, template="plotly_white")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Yeniden suç işleme verisi bulunamadı (hedef kolon adında 'recid' geçmeli).")
-    with c2:
-        st.markdown("ℹ️ Bu pasta grafik, tahliye sonrası yeniden suç işleme durumunu yüzdesel olarak gösterir. "
-                    "'Tekrar Suç İşledi' dilimi öne çıkarılmıştır.")
-
+        fig.update_traces(textposition="inside", textinfo="percent+label", pull=[0, 0.1])
+        fig.update_layout(title_x=0.5, template="plotly_white")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Yeniden suç işleme verisi bulunamadı (hedef kolon adında 'recid' geçmeli).")
+with c2:
+    st.markdown(
+        "ℹ️ Bu pasta grafik, tahliye sonrası yeniden suç işleme durumunu yüzdesel olarak gösterir. "
+        "'Tekrar Suç İşledi' dilimi öne çıkarılmıştır."
+    )
