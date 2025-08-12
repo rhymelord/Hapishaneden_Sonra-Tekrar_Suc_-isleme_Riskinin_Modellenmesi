@@ -4,6 +4,45 @@ import pandas as pd
 import numpy as np
 from utils.model_utils import load_data, train_or_load_model, predict_single
 
+# -------------------------
+# Sütun Açıklamaları
+# -------------------------
+COLUMN_DESCRIPTIONS = {
+    "ID": "Kişiye ait benzersiz kimlik numarası",
+    "Gender": "Cinsiyet (Erkek/Kadın)",
+    "Race": "Irk/Etnik köken bilgisi",
+    "Age_at_Release": "Tahliye edildiği sıradaki yaş",
+    "Gang_Affiliated": "Çete üyeliği durumu (Evet/Hayır)",
+    "Supervision_Risk_Score_First": "İlk gözetim risk puanı",
+    "Education_Level": "Eğitim düzeyi",
+    "Dependents": "Bakmakla yükümlü olunan kişi sayısı",
+    "Prison_Offense": "Hapishaneye giriş sebebi olan suç türü",
+    "Prison_Years": "Hapiste geçirilen toplam yıl sayısı",
+    "Num_Distinct_Arrest_Crime_Types": "Gözaltına alındığı farklı suç türü sayısı",
+    "Prior_Arrest_Episodes_DVCharges": "Önceden aile içi şiddet nedeniyle gözaltı sayısı",
+    "Prior_Arrest_Episodes_GunCharges": "Önceden silah bulundurma/kullanma nedeniyle gözaltı sayısı",
+    "Num_Distinct_Conviction_Crime_Types": "Mahkûmiyet aldığı farklı suç türü sayısı",
+    "Prior_Conviction_Episodes_PPViolationCharges": "Önceden denetimli serbestlik ihlali nedeniyle mahkûmiyet sayısı",
+    "Prior_Conviction_Episodes_DomesticViolenceCharges": "Önceden aile içi şiddet nedeniyle mahkûmiyet sayısı",
+    "Prior_Conviction_Episodes_GunCharges": "Önceden silah suçları nedeniyle mahkûmiyet sayısı",
+    "Prior_Revocations_Probation": "Önceden iptal edilen denetimli serbestlik sayısı",
+    "Condition_MH_SA": "Ruh sağlığı veya madde bağımlılığı şartı (var/yok)",
+    "Condition_Cog_Ed": "Bilişsel eğitim şartı (var/yok)",
+    "Violations_Instruction": "Talimat ihlali sayısı",
+    "Delinquency_Reports": "Disiplin/uygunsuz davranış raporu sayısı",
+    "Program_Attendances": "Katıldığı program sayısı",
+    "Program_UnexcusedAbsences": "Mazaretsiz program devamsızlığı sayısı",
+    "Residence_Changes": "İkamet adresi değişiklik sayısı",
+    "Avg_Days_per_DrugTest": "Uyuşturucu testleri arasındaki ortalama gün sayısı",
+    "Num_Drugs_Used": "Kullanılan farklı uyuşturucu türü sayısı",
+    "Percent_Days_Employed": "Çalıştığı günlerin toplam günlere oranı (%)",
+    "Jobs_Per_Year": "Yıllık ortalama iş değiştirme sayısı",
+    "Employment_Exempt": "Çalışma zorunluluğundan muafiyet durumu",
+    "Recidivism_Within_3years": "3 yıl içinde tekrar suç işleme durumu (evet/hayır)",
+    "Recidivism_Arrest_Year1": "Tahliyeden sonraki ilk yılda tekrar gözaltı durumu",
+    "Training_Sample": "Verinin eğitim/test seti ayrımı bilgisi",
+}
+
 st.set_page_config(page_title="Tavsiye Sistemi", page_icon="🧩", layout="wide")
 st.title("🧩 Tavsiye Sistemi")
 # Varsayılan "Pages" menüsünü gizle
@@ -16,41 +55,36 @@ st.markdown("""
 # Kendi menünü oluştur
 with st.sidebar:
     st.header("Menü")
-    st.page_link("main.py", label="🏠 Ana Sayfa")  # ana dosyan hâlâ main.py ise
+    st.page_link("main.py", label="🏠 Ana Sayfa")
     st.page_link("pages/1_Profil_Analizi.py", label="🔎 Profil Analizi")
     st.page_link("pages/2_Tahmin_ve_Risk.py", label="🎯 Tahmin & Risk")
     st.page_link("pages/3_Tavsiye_Sistemi.py", label="🧩 Tavsiye Sistemi")
     st.page_link("pages/4_Rehabilitasyon_Senaryo_Simulatoru.py", label="🛠️ Senaryo Simülatörü")
-# --- Sabit Eşik (override: secrets/ENV) ---
-DEFAULT_THRESHOLD = 0.50  # değişmez eşik
 
+# --- Sabit Eşik ---
+DEFAULT_THRESHOLD = 0.50
 def get_threshold():
-    # Öncelik: Streamlit secrets → ENV → DEFAULT
     try:
-        import streamlit as st
         if "THRESHOLD" in st.secrets:
             return float(st.secrets["THRESHOLD"])
     except Exception:
         pass
     import os
     return float(os.getenv("THRESHOLD", DEFAULT_THRESHOLD))
-
 threshold = get_threshold()
 
 # --- Sayı kutularındaki +/- spin butonlarını gizle ---
 st.markdown("""
 <style>
-/* Chrome, Safari, Edge, Opera */
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-/* Firefox */
 input[type=number] { -moz-appearance: textfield; }
 </style>
 """, unsafe_allow_html=True)
 
 st.caption("""
-**Uyarı (etik & adil kullanım):** Bu sayfa, eğitim/demonstrasyon amaçlı **kural tabanlı** öneriler üretir.
-Gerçek hayatta karar destek sistemleri *adillik, önyargı azaltma, şeffaflık ve hukuki uygunluk* kriterleriyle değerlendirilmelidir.
+*Uyarı (etik & adil kullanım):* Bu sayfa, eğitim/demonstrasyon amaçlı *kural tabanlı* öneriler üretir.
+Gerçek hayatta karar destek sistemleri adillik, önyargı azaltma, şeffaflık ve hukuki uygunluk kriterleriyle değerlendirilmelidir.
 """)
 
 @st.cache_data(show_spinner=True)
@@ -73,7 +107,6 @@ bundle = _load_model(df)
 model = bundle["model"]
 cat_features = bundle.get("cat_features", [])
 X_columns = bundle["X_columns"]
-
 
 st.divider()
 st.subheader("Öneri Girdileri")
@@ -109,7 +142,7 @@ if mode == "ID Seç" and "ID" in df.columns:
         input_row[c] = base.get(c, np.nan)
 
 else:
-    st.info("İkili alanlar **radyo** ile, sayısallar **tam sayı** olarak; çok sınıflı kategorikler **selectbox** ile girilir.")
+    st.info("İkili alanlar *radyo* ile, sayısallar *tam sayı* olarak; çok sınıflı kategorikler *selectbox* ile girilir.")
 
     present = _present_cols(X_columns, df)
 
@@ -117,23 +150,29 @@ else:
     bin_cat   = [c for c in present if _is_cat(df[c]) and _is_binary(df[c])]
     multi_num = [c for c in present if pd.api.types.is_numeric_dtype(df[c]) and not _is_binary(df[c])]
     multi_cat = [c for c in present if _is_cat(df[c]) and df[c].dropna().nunique() > 2]
-    others    = [c for c in X_columns if c not in present]  # veride olmayan kolonlar
+    others    = [c for c in X_columns if c not in present]
 
     # --- İkili Sayısal ---
     if bin_num:
-        st.markdown("**İkili Sayısal (0/1) Alanlar**")
+        st.markdown("*İkili Sayısal (0/1) Alanlar*")
         cols = st.columns(4)
         for i, c in enumerate(bin_num):
             s = pd.to_numeric(df[c], errors="coerce")
             uniq = sorted(set([int(x) for x in s.dropna().unique().tolist() if x in [0, 1]])) or [0, 1]
             default = int(s.mode(dropna=True).iloc[0]) if not s.mode(dropna=True).empty else 0
             with cols[i % 4]:
-                choice = st.radio(c, options=uniq, index=uniq.index(default) if default in uniq else 0, horizontal=True)
+                choice = st.radio(
+                    c,
+                    options=uniq,
+                    index=uniq.index(default) if default in uniq else 0,
+                    horizontal=True,
+                    help=COLUMN_DESCRIPTIONS.get(c, "")
+                )
                 input_row[c] = int(choice)
 
     # --- İkili Kategorik ---
     if bin_cat:
-        st.markdown("**İkili Kategorik Alanlar**")
+        st.markdown("*İkili Kategorik Alanlar*")
         cols = st.columns(4)
         for i, c in enumerate(bin_cat):
             s = df[c].dropna().astype(str)
@@ -144,13 +183,14 @@ else:
                     c,
                     options=uniq_vals if uniq_vals else [""],
                     index=(uniq_vals.index(default) if default in uniq_vals else 0),
-                    horizontal=True
+                    horizontal=True,
+                    help=COLUMN_DESCRIPTIONS.get(c, "")
                 )
                 input_row[c] = choice
 
-    # --- Çok Değerli Sayısal (tam sayı, spin yok) ---
+    # --- Çok Değerli Sayısal ---
     if multi_num:
-        st.markdown("**Sayısal Özellikler**")
+        st.markdown("*Sayısal Özellikler*")
         cols = st.columns(3)
         for i, c in enumerate(multi_num):
             s = pd.to_numeric(df[c], errors="coerce").dropna()
@@ -159,17 +199,18 @@ else:
                 minv = int(np.floor(np.nanmin(s.values)))
                 maxv = int(np.ceil(np.nanmax(s.values)))
             else:
-                dflt, minv, maxv = 0, -10**6, 10**6
+                dflt, minv, maxv = 0, -10*6, 10*6
             if minv >= maxv:
                 minv, maxv = minv - 100, maxv + 100
             with cols[i % 3]:
                 input_row[c] = st.number_input(
-                    c, value=int(dflt), min_value=int(minv), max_value=int(maxv), step=1, format="%d"
+                    c, value=int(dflt), min_value=int(minv), max_value=int(maxv), step=1, format="%d",
+                    help=COLUMN_DESCRIPTIONS.get(c, "")
                 )
 
     # --- Çok Sınıflı Kategorik ---
     if multi_cat:
-        st.markdown("**Kategorik Özellikler**")
+        st.markdown("*Kategorik Özellikler*")
         cols = st.columns(3)
         for i, c in enumerate(multi_cat):
             s = df[c].dropna().astype(str)
@@ -177,16 +218,18 @@ else:
             default = s.mode().iloc[0] if not s.mode().empty else (uniq[0] if uniq else "")
             with cols[i % 3]:
                 input_row[c] = st.selectbox(
-                    c, options=uniq if uniq else [""], index=(uniq.index(default) if default in uniq else 0)
+                    c, options=uniq if uniq else [""],
+                    index=(uniq.index(default) if default in uniq else 0),
+                    help=COLUMN_DESCRIPTIONS.get(c, "")
                 )
 
-    # --- Diğer (veride olmayan kolonlar) ---
+    # --- Diğer ---
     if others:
-        st.markdown("**Diğer (veride bulunmayan kolonlar)**")
+        st.markdown("*Diğer (veride bulunmayan kolonlar)*")
         cols = st.columns(3)
         for i, c in enumerate(others):
             with cols[i % 3]:
-                val = st.text_input(c, value="")
+                val = st.text_input(c, value="", help=COLUMN_DESCRIPTIONS.get(c, ""))
                 try:
                     input_row[c] = float(val) if val != "" else np.nan
                 except Exception:
@@ -212,13 +255,11 @@ if st.button("Önerileri Oluştur", type="primary"):
         with c2: st.metric("Tahmin (0/1)", str(pred))
         with c3: st.metric("Risk", band)
 
-        # Örnek bazlı katkılar (varsa)
+        # Öneriler
         contrib = res.get("top_contrib", {})
-
         st.markdown("#### Kişiye Özel Öneriler (Kural Tabanlı)")
         tips = []
 
-        # Veri sözlüğüne göre anahtar alanlara örnek kurallar
         key_edu = [c for c in X_columns if "Education" in c or "School" in c]
         key_job = [c for c in X_columns if "Employment" in c or "Job" in c or "Work" in c]
 
@@ -226,7 +267,6 @@ if st.button("Önerileri Oluştur", type="primary"):
             tips.append("Eğitim programlarına yönlendirme (GED/HS tamamlama, mesleki sertifika).")
         if any(k in contrib for k in key_job):
             tips.append("İş bulma desteği: CV hazırlama, mesleki kurslar ve staj eşleştirmesi.")
-
         for k in contrib.keys():
             if "Age" in k:
                 tips.append("Yaşa uygun mentorluk ve akran destek grupları.")
@@ -251,7 +291,7 @@ if st.button("Önerileri Oluştur", type="primary"):
             tips += ["Mevcut koruyucu faktörleri sürdürmeye yönelik hafif dokunuşlu takip."]
 
         st.success("Öneri listesi hazır:")
-        for t in dict.fromkeys(tips):  # tekrarları temizle
+        for t in dict.fromkeys(tips):
             st.markdown(f"- {t}")
 
         st.markdown("##### En Etkili Özellikler (örnek bazlı, SHAP)")
@@ -263,6 +303,3 @@ if st.button("Önerileri Oluştur", type="primary"):
 
     except Exception as e:
         st.error(f"Öneri oluşturma sırasında hata: {e}")
-
-
-
