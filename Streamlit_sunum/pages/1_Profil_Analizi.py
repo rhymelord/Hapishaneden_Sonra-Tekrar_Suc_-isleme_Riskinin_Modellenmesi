@@ -54,7 +54,7 @@ def is_binary_series(s: pd.Series) -> bool:
 # ---------- Üst Özet ----------
 col1, col2 = st.columns([2, 1])
 with col1:
-    st.markdown("### Özet İstatistikler (Sayısal)")
+    st.markdown("### Özet İstatistikler ")
     desc = cohort_describe(df)
     st.dataframe(desc, use_container_width=True)
 
@@ -140,5 +140,6 @@ if selected_id is not None:
         st.info("Kıyaslama için uygun (ikili/ID olmayan) sayısal sütun bulunamadı.")
 else:
     st.info("ID kolonu yoksa veya seçim yapmadıysan üstteki dağılımları kullanabilirsin.")
+
 
 
