@@ -14,6 +14,21 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+# Varsayılan "Pages" menüsünü gizle
+st.markdown("""
+<style>
+[data-testid="stSidebarNav"] {display:none;}  /* default nav kapalı */
+</style>
+""", unsafe_allow_html=True)
+
+# Kendi menünü oluştur
+with st.sidebar:
+    st.header("Menü")
+    st.page_link("main.py", label="🏠 Ana Sayfa")  # ana dosyan hâlâ main.py ise
+    st.page_link("pages/1_Profil_Analizi.py", label="🔎 Profil Analizi")
+    st.page_link("pages/2_Tahmin_ve_Risk.py", label="🎯 Tahmin & Risk")
+    st.page_link("pages/3_Tavsiye_Sistemi.py", label="🧩 Tavsiye Sistemi")
+    st.page_link("pages/4_Rehabilitasyon_Senaryo_Simulatoru.py", label="🛠️ Senaryo Simülatörü")
 
 
 # --------------------
@@ -210,6 +225,7 @@ with c2:
         "ℹ️ Bu pasta grafik, tahliye sonrası yeniden suç işleme durumunu yüzdesel olarak gösterir. "
         "'Tekrar Suç İşledi' dilimi öne çıkarılmıştır."
     )
+
 
 
 
