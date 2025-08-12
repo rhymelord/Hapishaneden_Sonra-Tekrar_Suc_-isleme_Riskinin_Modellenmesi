@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils.model_utils import load_data, cohort_describe, TARGET_COL
 
-st.set_page_config(page_title="Profil Analizi", page_icon="📊", layout="wide")
-st.title("📊 Profil Analizi")
+st.set_page_config(page_title="Profil Analizi", page_icon="🔎", layout="wide")
+st.title("🔎 Profil Analizi")
 
 @st.cache_data(show_spinner=False)
 def _load():
@@ -124,3 +124,4 @@ if selected_id is not None:
         st.info("Kıyaslama için uygun (ikili/ID olmayan) sayısal sütun bulunamadı.")
 else:
     st.info("ID kolonu yoksa veya seçim yapmadıysan üstteki dağılımları kullanabilirsin.")
+
