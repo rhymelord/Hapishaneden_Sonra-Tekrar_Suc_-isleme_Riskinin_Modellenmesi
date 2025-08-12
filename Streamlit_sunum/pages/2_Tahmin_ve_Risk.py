@@ -21,7 +21,6 @@ with st.sidebar:
     st.page_link("pages/2_Tahmin_ve_Risk.py", label="🎯 Tahmin & Risk")
     st.page_link("pages/3_Tavsiye_Sistemi.py", label="🧩 Tavsiye Sistemi")
     st.page_link("pages/4_Rehabilitasyon_Senaryo_Simulatoru.py", label="🛠️ Senaryo Simülatörü")
-
 # --- Sabit Eşik (override: secrets/ENV) ---
 DEFAULT_THRESHOLD = 0.50  # değişmez eşik
 
@@ -70,48 +69,7 @@ model = bundle["model"]
 cat_features = bundle.get("cat_features", [])
 X_columns = bundle["X_columns"]
 
-# --- Yardım ikonu ve tooltip fonksiyonu ---
-def help_icon(text):
-    return f"""
-    <span style='position: relative; cursor: help; display:inline-block;'>
-        ℹ️
-        <span style="
-            visibility: hidden;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -60px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            width: 120px;
-            font-size: 12px;
-            ">
-            {text}
-        </span>
-    </span>
-    <style>
-    span:hover span {{
-        visibility: visible !important;
-        opacity: 1 !important;
-    }}
-    </style>
-    """
 
-# Her bir kolon için tooltip açıklaması (örnek, kendi verine göre düzenleyebilirsin)
-COLUMN_DESCRIPTIONS = {
-    # Örnek kolon açıklamaları, kendi verine göre değiştir
-    "feature1": "Bu özellik kişinin yaşını belirtir.",
-    "feature2": "Bu özellik eğitim seviyesini gösterir.",
-    "feature3": "Gelir durumu (bin TL cinsinden).",
-    # Aşağıdaki boş bırakılanları kendine göre doldurabilirsin
-    # ...
-}
 
 st.divider()
 st.subheader("Tekil Tahmin")
@@ -148,7 +106,7 @@ if mode == "ID Seç" and "ID" in df.columns:
         input_row[c] = base.get(c, np.nan)
 
 else:
-    st.info("İkili (0/1 veya 2 sınıf) alanlar aşağıda *radyo* ile, çok değerli sayısallar *tam sayı* olarak girilir.")
+    st.info("İkili (0/1 veya 2 sınıf) alanlar aşağıda **radyo** ile, çok değerli sayısallar **tam sayı** olarak girilir.")
 
     present = _present_cols(X_columns, df)
 
@@ -161,74 +119,79 @@ else:
 
     # --- İkili Sayısal ---
     if bin_num:
-        st.markdown("*İkili Sayısal (0/1) Alanlar*")
+        st.markdown("**İkili Sayısal (0/1) Alanlar**")
         cols = st.columns(4)
         for i, c in enumerate(bin_num):
             s = pd.to_numeric(df[c], errors="coerce")
             uniq = sorted(set([int(x) for x in s.dropna().unique().tolist() if x in [0, 1]])) or [0, 1]
             default = int(s.mode(dropna=True).iloc[0]) if not s.mode(dropna=True).empty else 0
             with cols[i % 4]:
-                st.markdown(f"{c} {help_icon(COLUMN_DESCRIPTIONS.get(c, '0 veya 1 değeri seçiniz.'))}", unsafe_allow_html=True)
-                choice = st.radio("", options=uniq, index=uniq.index(default) if default in uniq else 0, horizontal=True)
+                choice = st.radio(c, options=uniq, index=uniq.index(default) if default in uniq else 0, horizontal=True)
                 input_row[c] = int(choice)
 
     # --- İkili Kategorik ---
     if bin_cat:
-        st.markdown("*İkili Kategorik Alanlar*")
+        st.markdown("**İkili Kategorik Alanlar**")
         cols = st.columns(4)
         for i, c in enumerate(bin_cat):
             s = df[c].dropna().astype(str)
             uniq_vals = sorted(s.unique().tolist())[:2]
             default = s.mode().iloc[0] if not s.mode().empty else (uniq_vals[0] if uniq_vals else "")
             with cols[i % 4]:
-                st.markdown(f"{c} {help_icon(COLUMN_DESCRIPTIONS.get(c, 'İki kategoriden birini seçiniz.'))}", unsafe_allow_html=True)
-                choice = st.radio("", options=uniq_vals if uniq_vals else [""],
+                choice = st.radio(c, options=uniq_vals if uniq_vals else [""],
                                   index=(uniq_vals.index(default) if default in uniq_vals else 0),
                                   horizontal=True)
                 input_row[c] = choice
 
     # --- Çok Değerli Sayısal (tam sayı, spin yok) ---
     if multi_num:
-        st.markdown("*Sayısal Özellikler*")
+        st.markdown("**Sayısal Özellikler**")
         cols = st.columns(3)
         for i, c in enumerate(multi_num):
             s = pd.to_numeric(df[c], errors="coerce").dropna()
+
             if len(s):
                 dflt = int(np.round(np.nanmedian(s.values)))
                 minv = int(np.floor(np.nanmin(s.values)))
                 maxv = int(np.ceil(np.nanmax(s.values)))
             else:
-                dflt, minv, maxv = 0, -10*6, 10*6  # veri yoksa geniş aralık
-            if minv >= maxv:
+                dflt, minv, maxv = 0, -10**6, 10**6  # veri yoksa geniş aralık
+
+            if minv >= maxv:  # tek değerli kolonda aralığı aç
                 minv, maxv = minv - 100, maxv + 100
+
             with cols[i % 3]:
-                st.markdown(f"{c} {help_icon(COLUMN_DESCRIPTIONS.get(c, 'Tam sayı değeri giriniz.'))}", unsafe_allow_html=True)
                 input_row[c] = st.number_input(
-                    "", value=int(dflt), min_value=int(minv),
-                    max_value=int(maxv), step=1, format="%d"
+                    c,
+                    value=int(dflt),
+                    min_value=int(minv),
+                    max_value=int(maxv),
+                    step=1,
+                    format="%d"
                 )
 
     # --- Çok Sınıflı Kategorik ---
     if multi_cat:
-        st.markdown("*Kategorik Özellikler*")
+        st.markdown("**Kategorik Özellikler**")
         cols = st.columns(3)
         for i, c in enumerate(multi_cat):
             s = df[c].dropna().astype(str)
             uniq = s.unique().tolist()
             default = s.mode().iloc[0] if not s.mode().empty else (uniq[0] if uniq else "")
             with cols[i % 3]:
-                st.markdown(f"{c} {help_icon(COLUMN_DESCRIPTIONS.get(c, 'Listeden bir değer seçiniz.'))}", unsafe_allow_html=True)
-                input_row[c] = st.selectbox("", options=uniq if uniq else [""],
-                                            index=(uniq.index(default) if default in uniq else 0))
+                input_row[c] = st.selectbox(
+                    c,
+                    options=uniq if uniq else [""],
+                    index=(uniq.index(default) if default in uniq else 0)
+                )
 
     # --- Diğer (veride olmayan kolonlar) ---
     if others:
-        st.markdown("*Diğer (veride bulunmayan kolonlar)*")
+        st.markdown("**Diğer (veride bulunmayan kolonlar)**")
         cols = st.columns(3)
         for i, c in enumerate(others):
             with cols[i % 3]:
-                st.markdown(f"{c} {help_icon(COLUMN_DESCRIPTIONS.get(c, 'Değeri manuel olarak giriniz.'))}", unsafe_allow_html=True)
-                val = st.text_input("", value="")
+                val = st.text_input(c, value="")
                 try:
                     input_row[c] = float(val) if val != "" else np.nan
                 except Exception:
@@ -279,17 +242,23 @@ if file is not None:
                 batch_df[c] = np.nan
         batch_df = batch_df[X_columns]
 
-        # Toplu tahmin
-        batch_result = model.predict_proba(batch_df)[:, 1]
-        batch_pred = (batch_result >= threshold).astype(int)
-        batch_df["Tahmin_Proba"] = batch_result
-        batch_df["Tahmin_Sonuc"] = batch_pred
+        # Tahmin
+        proba = model.predict_proba(batch_df)[:, 1]
+        pred = (proba >= threshold).astype(int)
 
-        st.success(f"Toplu tahmin başarıyla tamamlandı, {len(batch_df)} kayıt işlendi.")
-        st.dataframe(batch_df.head(10))
+        out = batch_df.copy()
+        out["proba_1"] = proba
+        out["pred"] = pred
 
-        # İndir butonu
-        st.download_button("Sonucu CSV olarak indir", batch_df.to_csv(index=False), "tahmin_sonuclari.csv")
+        st.success(f"{len(out)} satır tahmin edildi.")
+        st.dataframe(out.head(100), use_container_width=True)
 
+        st.download_button(
+            "Sonuçları indir (CSV)",
+            data=out.to_csv(index=False).encode("utf-8"),
+            file_name="tahmin_sonuclari.csv",
+            mime="text/csv"
+        )
     except Exception as e:
-        st.error(f"Dosya işleme sırasında hata: {e}")
+        st.error(f"Toplu tahmin sırasında hata: {e}")
+
