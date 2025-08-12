@@ -14,6 +14,12 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+with st.sidebar:
+    st.page_link("Ana_Sayfa.py", label="🏠 Ana Sayfa")
+    st.page_link("pages/1_Profil_Analizi.py", label="🔎 Profil Analizi")
+    st.page_link("pages/2_Tahmin_ve_Risk.py", label="🎯 Tahmin & Risk")
+    st.page_link("pages/3_Tavsiye_Sistemi.py", label="🧩 Tavsiye Sistemi")
+    st.page_link("pages/4_Rehabilitasyon_Senaryo_Simulatoru.py", label="🛠️ Senaryo Simülatörü")
 
 # --------------------
 # CACHE'Lİ VERİ YÜKLEME
@@ -209,3 +215,4 @@ with c2:
         "ℹ️ Bu pasta grafik, tahliye sonrası yeniden suç işleme durumunu yüzdesel olarak gösterir. "
         "'Tekrar Suç İşledi' dilimi öne çıkarılmıştır."
     )
+
