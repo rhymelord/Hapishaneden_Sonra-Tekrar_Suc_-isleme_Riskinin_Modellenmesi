@@ -172,10 +172,6 @@ if recid_col:
     if pd.notna(recid_rate):
         cards.append(("Yeniden Suç İşleme Oranı", f"%{recid_rate*100:.1f}", "⚠️", "#d32f2f"))
 
-if "Age_at_Release" in df.columns:
-    avg_age = safe_mean(df["Age_at_Release"])
-    if pd.notna(avg_age):
-        cards.append(("Ortalama Tahliye Yaşı", f"{avg_age:.1f}", "👤", "#00695c"))
 
 if "Education_Level" in df.columns:
     n_edu = safe_unique(df["Education_Level"])
@@ -225,6 +221,7 @@ with c2:
         "ℹ️ Bu pasta grafik, tahliye sonrası yeniden suç işleme durumunu yüzdesel olarak gösterir. "
         "'Tekrar Suç İşledi' dilimi öne çıkarılmıştır."
     )
+
 
 
 
