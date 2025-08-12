@@ -6,6 +6,21 @@ from utils.model_utils import load_data, train_or_load_model, predict_single
 
 st.set_page_config(page_title="Tavsiye Sistemi", page_icon="🧩", layout="wide")
 st.title("🧩 Tavsiye Sistemi")
+# Varsayılan "Pages" menüsünü gizle
+st.markdown("""
+<style>
+[data-testid="stSidebarNav"] {display:none;}  /* default nav kapalı */
+</style>
+""", unsafe_allow_html=True)
+
+# Kendi menünü oluştur
+with st.sidebar:
+    st.header("Menü")
+    st.page_link("main.py", label="🏠 Ana Sayfa")  # ana dosyan hâlâ main.py ise
+    st.page_link("pages/1_Profil_Analizi.py", label="🔎 Profil Analizi")
+    st.page_link("pages/2_Tahmin_ve_Risk.py", label="🎯 Tahmin & Risk")
+    st.page_link("pages/3_Tavsiye_Sistemi.py", label="🧩 Tavsiye Sistemi")
+    st.page_link("pages/4_Rehabilitasyon_Senaryo_Simulatoru.py", label="🛠️ Senaryo Simülatörü")
 
 # --- Sayı kutularındaki +/- spin butonlarını gizle ---
 st.markdown("""
@@ -244,3 +259,4 @@ if st.button("Önerileri Oluştur", type="primary"):
 
     except Exception as e:
         st.error(f"Öneri oluşturma sırasında hata: {e}")
+
