@@ -10,64 +10,6 @@ from catboost import CatBoostClassifier, Pool
 TARGET_COL = "Recidivism_Within_3years"
 DROP_COLS  = ["ID", "Training_Sample", TARGET_COL]
 # utils/var_help.py
-from __future__ import annotations
-from pathlib import Path
-import re
-
-# (Kısa ve sade) Türkçe açıklamalar — bildiklerimizi doldurduk,
-# kalanları altta kurallarla tahmin edeceğiz.
-VAR_TR: dict[str, str] = {
-    "ID": "Kayıt kimliği (benzersiz).",
-    "Training_Sample": "Model eğitimi için işaret (1=Eğitim, 0=Diğer/Doğrulama).",
-    "Recidivism_Within_3years": "Tahliyeden sonraki 3 yıl içinde yeniden suç işleme (1=Evet, 0=Hayır).",
-    "Age_at_Release": "Tahliye anındaki yaş (yıl).",
-    "Sentence_Length_Months": "Verilen ceza süresi (ay).",
-    "Time_Served_Months": "Cezaevinde geçirilen süre (ay).",
-    "Education_Level": "En yüksek tamamlanan eğitim seviyesi.",
-    "Employment_Status": "İstihdam durumu (tahliye öncesi/sonrası).",
-    "Gender": "Cinsiyet.",
-    "Prison_Offense": "Cezaevine girişe temel suç türü.",
-    "Prior_Arrests": "Önceki gözaltı/tutuklama sayısı.",
-    "Prior_Convictions": "Önceki mahkûmiyet sayısı.",
-    "Prior_Commitments": "Önceki tutukluluk/kapalı kurum sayısı.",
-    "Release_Type": "Tahliye türü (ör. koşullu, denetimli).",
-    "Parole_Supervision": "Denetimli serbestlik/gözetim durumu.",
-    "Supervision_Level": "Denetim yoğunluğu/seviyesi.",
-    "Marital_Status": "Medeni durum.",
-    "Num_Children": "Çocuk sayısı.",
-    "Housing_Status": "Barınma durumu (kalıcı/kalıcı değil).",
-    "Homeless": "Evsizlik göstergesi (1=Evet, 0=Hayır).",
-    "Substance_Abuse_History": "Madde kullanım geçmişi (1/0 veya kategorik).",
-    "Alcohol_Abuse_History": "Alkol kullanım/bağımlılık geçmişi.",
-    "Mental_Health_Diagnosis": "Ruh sağlığı tanısı bilgisi (var/yok).",
-    "Program_Participation": "Program/rehabilitasyon katılımı.",
-    "Program_Completion": "Katıldığı programı tamamlama durumu.",
-    "Risk_Score": "Önceden hesaplanmış risk skoru (varsa).",
-    "County": "İlçe/County bilgisi.",
-    "State": "Eyalet/il bilgisi.",
-    "Zip": "Posta kodu.",
-    # Gerekirse ekleyelim...
-}
-
-# Sözlükte yoksa kullanılacak KISA açıklama kuralları
-_RULES: list[tuple[re.Pattern, str]] = [
-    (re.compile(r"recid", re.I), "Yeniden suç işleme ile ilgili hedef/sinyal."),
-    (re.compile(r"\bage\b|\bya[sş]\b", re.I), "Yaş bilgisi (yıl)."),
-    (re.compile(r"month|ay|_mo\b", re.I), "Ay cinsinden süre/değer."),
-    (re.compile(r"prior|previous|onceki", re.I), "Geçmiş/önceki kayıt sayısı."),
-    (re.compile(r"arrest|g[oö]zalt", re.I), "Gözaltı/tutuklama bilgisi."),
-    (re.compile(r"convict|mahk[uû]m", re.I), "Mahkûmiyet bilgisi."),
-    (re.compile(r"offen|su[cç]", re.I), "Suç türü/kategorisi."),
-    (re.compile(r"educ|okul|school", re.I), "Eğitim seviyesi/bilgisi."),
-    (re.compile(r"employ|job|work|istihdam", re.I), "İstihdam/çalışma durumu."),
-    (re.compile(r"gender|sex|cinsiyet", re.I), "Cinsiyet bilgisi."),
-    (re.compile(r"parole|probation|supervis", re.I), "Denetim/koşullu serbestlik bilgisi."),
-    (re.compile(r"housing|home|evsiz", re.I), "Barınma/konut durumu."),
-    (re.compile(r"alcohol|substance|drug|madde", re.I), "Madde/alkol kullanımı bilgisi."),
-    (re.compile(r"mental|ruh", re.I), "Ruh sağlığına ilişkin bilgi."),
-    (re.compile(r"risk", re.I), "Risk göstergesi/puanı."),
-    (re.compile(r"state|county|city|il|ilce|zip|posta", re.I), "Coğrafi/konum bilgisi."),
-]
 
 def _guess(col: str) -> str:
     for pat, desc in _RULES:
@@ -184,4 +126,5 @@ def cohort_describe(df: pd.DataFrame) -> pd.DataFrame:
     # Hızlı özet istatistik (sayısal)
     num = df.select_dtypes(include=[np.number])
     return num.describe().T
+
 
