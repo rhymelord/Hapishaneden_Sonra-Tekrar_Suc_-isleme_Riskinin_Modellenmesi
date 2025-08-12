@@ -21,6 +21,21 @@ with st.sidebar:
     st.page_link("pages/2_Tahmin_ve_Risk.py", label="🎯 Tahmin & Risk")
     st.page_link("pages/3_Tavsiye_Sistemi.py", label="🧩 Tavsiye Sistemi")
     st.page_link("pages/4_Rehabilitasyon_Senaryo_Simulatoru.py", label="🛠️ Senaryo Simülatörü")
+# --- Sabit Eşik (override: secrets/ENV) ---
+DEFAULT_THRESHOLD = 0.50  # değişmez eşik
+
+def get_threshold():
+    # Öncelik: Streamlit secrets → ENV → DEFAULT
+    try:
+        import streamlit as st
+        if "THRESHOLD" in st.secrets:
+            return float(st.secrets["THRESHOLD"])
+    except Exception:
+        pass
+    import os
+    return float(os.getenv("THRESHOLD", DEFAULT_THRESHOLD))
+
+threshold = get_threshold()
 
 # --- Sayı kutularındaki +/- spin butonlarını gizle ---
 st.markdown("""
@@ -248,5 +263,6 @@ if st.button("Önerileri Oluştur", type="primary"):
 
     except Exception as e:
         st.error(f"Öneri oluşturma sırasında hata: {e}")
+
 
 
