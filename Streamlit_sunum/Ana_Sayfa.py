@@ -211,7 +211,8 @@ with c2:
         "'Tekrar Suç İşledi' dilimi öne çıkarılmıştır."
     )
 
-# --- KORELASYON BÖLÜMÜ İSTEKLE KALDIRILDI ---
+
+
 
 
 
