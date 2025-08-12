@@ -1,4 +1,4 @@
-# main.py
+# Ana_Sayfa.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -217,4 +217,5 @@ with c2:
     )
 
 # --- KORELASYON BÖLÜMÜ İSTEKLE KALDIRILDI ---
+
 
