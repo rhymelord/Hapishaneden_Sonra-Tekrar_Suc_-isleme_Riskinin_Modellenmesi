@@ -59,17 +59,6 @@ model = bundle["model"]
 cat_features = bundle.get("cat_features", [])
 X_columns = bundle["X_columns"]
 
-# -------------------------
-# Üst Bilgi Şeridi (AUC & Eşik)
-# -------------------------
-left, right = st.columns([2, 1])
-with left:
-    st.markdown("#### Model Özeti")
-    auc_val = bundle.get("auc", None)
-    st.write(f"**AUC:** {auc_val:.3f}" if auc_val is not None else "AUC: —")
-with right:
-    st.markdown("#### Eşik Değeri")
-    threshold = st.slider("Sınıflandırma eşiği (proba ≥ eşik ⇒ 1)", 0.05, 0.95, 0.50, 0.01)
 
 st.divider()
 st.subheader("Öneri Girdileri")
@@ -259,4 +248,5 @@ if st.button("Önerileri Oluştur", type="primary"):
 
     except Exception as e:
         st.error(f"Öneri oluşturma sırasında hata: {e}")
+
 
